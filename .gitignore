@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.env
+.vscode/
+
+# Ignore large model files if they are too big for git (GitHub limit 100MB)
+# For now, I'll comment them out to include them, but warn user if they are huge.
+# *.pkl
+# *.h5
+# *.keras
+# *.cbm

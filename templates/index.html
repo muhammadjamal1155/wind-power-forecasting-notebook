@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wind Power Prediction</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --input-bg: #334155;
+            --input-border: #475569;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input {
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: var(--text);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #result {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: rgba(79, 70, 229, 0.1);
+            border: 1px solid var(--primary);
+            border-radius: 0.5rem;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Wind Power Forecaster</h1>
+        <form id="predictForm">
+            <!-- Basic Features -->
+            <div class="form-group">
+                <label for="wind_speed_ms">Wind Speed (m/s)</label>
+                <input type="number" step="any" id="wind_speed_ms" required>
+            </div>
+            <div class="form-group">
+                <label for="theoretical_power">Theoretical Power (KWh)</label>
+                <input type="number" step="any" id="theoretical_power" required>
+            </div>
+            <div class="form-group">
+                <label for="wind_direction">Wind Direction (°)</label>
+                <input type="number" step="any" id="wind_direction" required>
+            </div>
+
+            <!-- Time Features -->
+            <div class="form-group">
+                <label for="hour">Hour of Day (0-23)</label>
+                <input type="number" min="0" max="23" id="hour" required>
+            </div>
+            <div class="form-group">
+                <label for="day_of_week">Day of Week (0-6)</label>
+                <input type="number" min="0" max="6" id="day_of_week" required>
+            </div>
+
+            <!-- Lag Features - Power -->
+            <div class="form-group">
+                <label for="power_lag_1">Power Lag 1</label>
+                <input type="number" step="any" id="power_lag_1" required>
+            </div>
+            <div class="form-group">
+                <label for="power_lag_2">Power Lag 2</label>
+                <input type="number" step="any" id="power_lag_2" required>
+            </div>
+            <div class="form-group">
+                <label for="power_lag_6">Power Lag 6</label>
+                <input type="number" step="any" id="power_lag_6" required>
+            </div>
+
+            <!-- Lag Features - Wind Speed -->
+            <div class="form-group">
+                <label for="wind_speed_lag_1">Wind Speed Lag 1</label>
+                <input type="number" step="any" id="wind_speed_lag_1" required>
+            </div>
+            <div class="form-group">
+                <label for="wind_speed_lag_2">Wind Speed Lag 2</label>
+                <input type="number" step="any" id="wind_speed_lag_2" required>
+            </div>
+            <div class="form-group">
+                <label for="wind_speed_lag_6">Wind Speed Lag 6</label>
+                <input type="number" step="any" id="wind_speed_lag_6" required>
+            </div>
+
+            <!-- Rolling Mean Features -->
+            <div class="form-group">
+                <label for="power_roll_mean_6">Power Rolling Mean (6)</label>
+                <input type="number" step="any" id="power_roll_mean_6" required>
+            </div>
+            <div class="form-group">
+                <label for="wind_speed_roll_mean_6">Wind Speed Rolling Mean (6)</label>
+                <input type="number" step="any" id="wind_speed_roll_mean_6" required>
+            </div>
+
+            <button type="submit" class="full-width">Predict Power Output</button>
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('predictForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = e.target.querySelector('button');
+            const resultDiv = document.getElementById('result');
+
+            btn.classList.add('loading');
+            btn.textContent = 'Predicting...';
+            resultDiv.style.display = 'none';
+
+            // Collect values in the exact order expected by the model
+            // 1. wind_speed_ms
+            // 2. Theoretical_Power_Curve (KWh)
+            // 3. Wind Direction (°)
+            // 4. hour_of_day
+            // 5. day_of_week
+            // 6. power_lag_1
+            // 7. wind_speed_ms_lag_1
+            // 8. power_lag_2
+            // 9. wind_speed_ms_lag_2
+            // 10. power_lag_6
+            // 11. wind_speed_ms_lag_6
+            // 12. power_roll_mean_6
+            // 13. wind_speed_ms_roll_mean_6
+
+            const features = [
+                parseFloat(document.getElementById('wind_speed_ms').value),
+                parseFloat(document.getElementById('theoretical_power').value),
+                parseFloat(document.getElementById('wind_direction').value),
+                parseFloat(document.getElementById('hour').value),
+                parseFloat(document.getElementById('day_of_week').value),
+                parseFloat(document.getElementById('power_lag_1').value),
+                parseFloat(document.getElementById('wind_speed_lag_1').value),
+                parseFloat(document.getElementById('power_lag_2').value),
+                parseFloat(document.getElementById('wind_speed_lag_2').value),
+                parseFloat(document.getElementById('power_lag_6').value),
+                parseFloat(document.getElementById('wind_speed_lag_6').value),
+                parseFloat(document.getElementById('power_roll_mean_6').value),
+                parseFloat(document.getElementById('wind_speed_roll_mean_6').value)
+            ];
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ features: features }) // FastAPI expects {"features": [...]}
+                });
+
+                if (!response.ok) throw new Error('Prediction failed');
+
+                const data = await response.json();
+
+                // Format the output
+                // Example response: {"XGBoost": 123.45, "LightGBM": 120.00, ...}
+                let html = '<h3>Prediction Results</h3>';
+                // The data itself is the prediction dictionary
+                if (data && typeof data === 'object') {
+                    for (const [model, value] of Object.entries(data)) {
+                        html += `<p><strong>${model}:</strong> ${Number(value).toFixed(2)} KW</p>`;
+                    }
+                } else {
+                    html += `<p>${JSON.stringify(data)}</p>`;
+                }
+
+                resultDiv.innerHTML = html;
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                console.error(error);
+                resultDiv.innerHTML = `<p style="color: #ef4444">Error: ${error.message}</p>`;
+                resultDiv.style.display = 'block';
+            } finally {
+                btn.classList.remove('loading');
+                btn.textContent = 'Predict Power Output';
+            }
+        });
+    </script>
+</body>
+
+</html>
