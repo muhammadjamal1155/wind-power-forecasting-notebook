@@ -6,12 +6,14 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 import numpy as np
 import joblib
 from catboost import CatBoostRegressor
 from tensorflow.keras.models import load_model
 
 app = FastAPI(title="Wind Power Forecasting API")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def read_root():

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wind Power Forecaster</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
@@ -566,6 +567,95 @@
             font-weight: 500;
         }
 
+        /* ── Validation States ── */
+        input[type="number"].is-invalid {
+            border-color: #ef4444 !important;
+            background: rgba(239, 68, 68, 0.07) !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+        }
+
+        input[type="number"].is-valid {
+            border-color: #10b981 !important;
+            background: rgba(16, 185, 129, 0.06) !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+        }
+
+        .field-error {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #f87171;
+            margin-top: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            animation: fadeIn 0.18s ease;
+        }
+
+        .field-error::before {
+            content: '⚠';
+            font-size: 0.7rem;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Shake on failed submit */
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-6px);
+            }
+
+            40% {
+                transform: translateX(6px);
+            }
+
+            60% {
+                transform: translateX(-4px);
+            }
+
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.35s ease;
+        }
+
+        /* Form-level error summary */
+        .form-error-summary {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 0.75rem;
+            padding: 0.85rem 1.1rem;
+            color: #fca5a5;
+            font-size: 0.82rem;
+            font-weight: 500;
+            margin-bottom: 1.25rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-error-summary.visible {
+            display: flex;
+        }
+
         /* ── Footer ── */
         .footer {
             margin-top: 2.5rem;
@@ -792,9 +882,136 @@
             container.appendChild(line);
         }
 
+        // ── Validation Rules ──
+        // Each entry: { id, label, rules }
+        // rules: required, isNumber, min, max, integer
+        const FIELDS = [
+            { id: 'wind_speed_ms', label: 'Wind Speed', rules: { required: true, min: 0, max: 100 } },
+            { id: 'theoretical_power', label: 'Theoretical Power', rules: { required: true, min: 0 } },
+            { id: 'wind_direction', label: 'Wind Direction', rules: { required: true, min: 0, max: 360 } },
+            { id: 'hour', label: 'Hour of Day', rules: { required: true, integer: true, min: 0, max: 23 } },
+            { id: 'day_of_week', label: 'Day of Week', rules: { required: true, integer: true, min: 0, max: 6 } },
+            { id: 'power_lag_1', label: 'Power Lag 1', rules: { required: true, min: 0 } },
+            { id: 'power_lag_2', label: 'Power Lag 2', rules: { required: true, min: 0 } },
+            { id: 'power_lag_6', label: 'Power Lag 6', rules: { required: true, min: 0 } },
+            { id: 'wind_speed_lag_1', label: 'Wind Speed Lag 1', rules: { required: true, min: 0, max: 100 } },
+            { id: 'wind_speed_lag_2', label: 'Wind Speed Lag 2', rules: { required: true, min: 0, max: 100 } },
+            { id: 'wind_speed_lag_6', label: 'Wind Speed Lag 6', rules: { required: true, min: 0, max: 100 } },
+            { id: 'power_roll_mean_6', label: 'Power Rolling Mean (6)', rules: { required: true, min: 0 } },
+            { id: 'wind_speed_roll_mean_6', label: 'Wind Speed Rolling Mean', rules: { required: true, min: 0, max: 100 } },
+        ];
+
+        function validateField(field) {
+            const input = document.getElementById(field.id);
+            const val = input.value.trim();
+            const num = parseFloat(val);
+            const { required, integer, min, max } = field.rules;
+
+            if (required && val === '') return `${field.label} is required.`;
+            if (val !== '' && isNaN(num)) return `${field.label} must be a valid number.`;
+            if (val !== '' && integer && !Number.isInteger(num)) return `${field.label} must be a whole number.`;
+            if (val !== '' && min !== undefined && num < min) return `${field.label} must be ≥ ${min}.`;
+            if (val !== '' && max !== undefined && num > max) return `${field.label} must be ≤ ${max}.`;
+            return null; // valid
+        }
+
+        function setFieldState(field, errorMsg) {
+            const input = document.getElementById(field.id);
+            const wrap = input.closest('.form-group');
+
+            // Remove previous error
+            const prev = wrap.querySelector('.field-error');
+            if (prev) prev.remove();
+
+            if (errorMsg) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                const err = document.createElement('div');
+                err.className = 'field-error';
+                err.textContent = errorMsg;
+                wrap.appendChild(err);
+            } else if (input.value.trim() !== '') {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-invalid', 'is-valid');
+            }
+        }
+
+        // Attach blur listeners for live validation
+        FIELDS.forEach(field => {
+            const input = document.getElementById(field.id);
+
+            // Block non-numeric keyboard input
+            input.addEventListener('keydown', (e) => {
+                const allowed = [
+                    'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                    'Home', 'End', '.'
+                ];
+                // Allow minus only for the first position (in case of negative values)
+                if (e.key === '-' && input.selectionStart === 0) return;
+                // Allow Ctrl/Cmd combos (copy, paste, select-all, etc.)
+                if (e.ctrlKey || e.metaKey) return;
+                // Allow numeric digits
+                if (/^\d$/.test(e.key)) return;
+                // Allow explicitly listed keys
+                if (allowed.includes(e.key)) return;
+                // Block everything else (letters, symbols, etc.)
+                e.preventDefault();
+            });
+
+            input.addEventListener('blur', () => {
+                const error = validateField(field);
+                setFieldState(field, error);
+            });
+            input.addEventListener('input', () => {
+                // Clear error as user types after an invalid state
+                if (input.classList.contains('is-invalid')) {
+                    const error = validateField(field);
+                    setFieldState(field, error);
+                }
+            });
+        });
+
+        // Summary banner (insert before button)
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'form-error-summary';
+        summaryEl.innerHTML = '⚠ &nbsp;<span id="summaryText"></span>';
+        document.querySelector('.btn-wrap').before(summaryEl);
+
         // ── Form submission ──
         document.getElementById('predictForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Run all validations
+            let firstError = null;
+            let errorCount = 0;
+            FIELDS.forEach(field => {
+                const error = validateField(field);
+                setFieldState(field, error);
+                if (error) {
+                    errorCount++;
+                    if (!firstError) firstError = field.id;
+                }
+            });
+
+            if (errorCount > 0) {
+                // Show summary
+                document.getElementById('summaryText').textContent =
+                    `Please fix ${errorCount} field${errorCount > 1 ? 's' : ''} before predicting.`;
+                summaryEl.classList.add('visible');
+                // Scroll to first error and shake the card
+                document.getElementById(firstError).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const card = document.querySelector('.card');
+                card.classList.remove('shake');
+                void card.offsetWidth; // reflow
+                card.classList.add('shake');
+                return;
+            }
+
+            summaryEl.classList.remove('visible');
+
             const btn = document.getElementById('submitBtn');
             const resultDiv = document.getElementById('result');
 

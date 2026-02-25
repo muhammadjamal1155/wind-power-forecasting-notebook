@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Dark background circle -->
+  <circle cx="32" cy="32" r="32" fill="#050d1a"/>
+
+  <!-- Turbine tower -->
+  <rect x="30" y="36" width="4" height="18" rx="1.5" fill="#06b6d4" opacity="0.9"/>
+
+  <!-- Hub -->
+  <circle cx="32" cy="36" r="3.5" fill="#06b6d4"/>
+  <circle cx="32" cy="36" r="1.5" fill="#050d1a"/>
+
+  <!-- Blade 1 – top -->
+  <path d="M32 33 C30 26, 25 20, 24 14 C27 18, 32 24, 32 33Z" fill="#06b6d4" opacity="0.95"/>
+
+  <!-- Blade 2 – bottom-right -->
+  <path d="M34.5 37.5 C41 37, 48 34, 53 31 C47 32, 40 33, 34.5 37.5Z" fill="#06b6d4" opacity="0.75"/>
+
+  <!-- Blade 3 – bottom-left -->
+  <path d="M29.5 37.5 C23 37, 16 34, 11 31 C17 32, 24 33, 29.5 37.5Z" fill="#06b6d4" opacity="0.55"/>
+
+  <!-- Glow ring -->
+  <circle cx="32" cy="32" r="30" stroke="#06b6d4" stroke-width="1" opacity="0.2"/>
+</svg>
