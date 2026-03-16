@@ -9,7 +9,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #06b6d4;
@@ -974,10 +973,6 @@
             }
         });
 
-        let predictionHistory = [];
-        let historyChartInstance = null;
-        let ensembleGaugeInstance = null;
-
         function renderResults(data) {
             const resultDiv = document.getElementById('result');
             let cardsHtml = '';
@@ -999,136 +994,8 @@
                 <div class="result-header-dot"></div>
                 <span class="result-header-text">Prediction Results</span>
             </div>
-            <div class="result-grid">${cardsHtml}</div>
-            <div class="charts-container" style="display: flex; gap: 2rem; margin-top: 3rem; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 300px; background: rgba(6, 182, 212, 0.04); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 1rem; padding: 1.5rem;">
-                    <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">Ensemble Power Output</h3>
-                    <div style="position: relative; height: 250px; display: flex; justify-content: center; align-items: center;">
-                        <canvas id="ensembleGauge"></canvas>
-                    </div>
-                </div>
-                <div style="flex: 1.5; min-width: 300px; background: rgba(129, 140, 248, 0.04); border: 1px solid rgba(129, 140, 248, 0.15); border-radius: 1rem; padding: 1.5rem;">
-                    <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 1rem; text-align: center;">Prediction History</h3>
-                    <div style="position: relative; height: 250px; width: 100%;">
-                        <canvas id="historyChart"></canvas>
-                    </div>
-                </div>
-            </div>`;
+            <div class="result-grid">${cardsHtml}</div>`;
             resultDiv.style.display = 'block';
-
-            // Save to history
-            if (data && data.Ensemble !== undefined) {
-                const timeLabel = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                predictionHistory.push({ time: timeLabel, value: data.Ensemble });
-                if (predictionHistory.length > 10) predictionHistory.shift(); // keep last 10
-            }
-
-            renderCharts(data);
-        }
-
-        function renderCharts(data) {
-            // Draw Ensemble Doughnut Gauge
-            const ctxGauge = document.getElementById('ensembleGauge').getContext('2d');
-            if (ensembleGaugeInstance) ensembleGaugeInstance.destroy();
-
-            const ensembleVal = data.Ensemble || 0;
-            const maxVal = Math.max(1000, ensembleVal * 1.5); // Dynamic max for the gauge
-
-            ensembleGaugeInstance = new Chart(ctxGauge, {
-                type: 'doughnut',
-                data: {
-                    datasets: [{
-                        data: [ensembleVal, maxVal - ensembleVal],
-                        backgroundColor: [
-                            'rgba(6, 182, 212, 0.85)',
-                            'rgba(255, 255, 255, 0.05)'
-                        ],
-                        borderWidth: 0,
-                        circumference: 240,
-                        rotation: 240
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '80%',
-                    plugins: {
-                        tooltip: { enabled: false }
-                    }
-                },
-                plugins: [{
-                    id: 'textCenter',
-                    beforeDraw: function(chart) {
-                        var width = chart.width, height = chart.height, ctx = chart.ctx;
-                        ctx.restore();
-                        var fontSize = (height / 8).toFixed(2);
-                        ctx.font = "800 " + fontSize + "px Inter";
-                        ctx.textBaseline = "middle";
-                        ctx.fillStyle = "#f0f9ff";
-                        var text = ensembleVal.toFixed(1),
-                            textX = Math.round((width - ctx.measureText(text).width) / 2),
-                            textY = height / 1.5;
-                        ctx.fillText(text, textX, textY);
-                        
-                        ctx.font = "600 " + (fontSize / 2.5) + "px Inter";
-                        ctx.fillStyle = "#94a3b8";
-                        var unitText = "KW",
-                            unitX = Math.round((width - ctx.measureText(unitText).width) / 2);
-                        ctx.fillText(unitText, unitX, textY + (fontSize * 0.8));
-                        ctx.save();
-                    }
-                }]
-            });
-
-            // Draw History Line Chart
-            const ctxHistory = document.getElementById('historyChart').getContext('2d');
-            if (historyChartInstance) historyChartInstance.destroy();
-
-            historyChartInstance = new Chart(ctxHistory, {
-                type: 'line',
-                data: {
-                    labels: predictionHistory.map(h => h.time),
-                    datasets: [{
-                        label: 'Ensemble Prediction (KW)',
-                        data: predictionHistory.map(h => h.value),
-                        borderColor: 'rgba(129, 140, 248, 1)',
-                        backgroundColor: 'rgba(129, 140, 248, 0.1)',
-                        borderWidth: 2,
-                        pointBackgroundColor: 'rgba(129, 140, 248, 1)',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 1.5,
-                        pointRadius: 4,
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { 
-                            beginAtZero: true,
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: '#94a3b8', font: { family: 'Inter', size: 10 } }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(5, 13, 26, 0.9)',
-                            titleFont: { family: 'Inter', size: 12 },
-                            bodyFont: { family: 'Inter', size: 13, weight: 'bold' },
-                            padding: 10,
-                            borderColor: 'rgba(129, 140, 248, 0.3)',
-                            borderWidth: 1
-                        }
-                    }
-                }
-            });
         }
     </script>
 </body>
