@@ -22,7 +22,9 @@ def read_root():
     return FileResponse("templates/index.html")
 
 # Load models
-xgb_model = joblib.load("models/xgboost_model.pkl")
+import xgboost as xgb
+xgb_model = xgb.XGBRegressor()
+xgb_model.load_model("models/xgboost_model.json")
 lgb_model = joblib.load("models/lightgbm_model.pkl")
 
 cb_model = CatBoostRegressor()
