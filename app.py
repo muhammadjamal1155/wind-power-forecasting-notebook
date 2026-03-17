@@ -101,9 +101,14 @@ def predict_smart(data: RawPredictionInput):
     # Perform prediction using existing logic
     X = np.array(features).reshape(1, -1)
     
-    pred_xgb = clip_prediction(xgb_model.predict(X)[0])
-    pred_lgb = clip_prediction(lgb_model.predict(X)[0])
-    pred_cb  = clip_prediction(cb_model.predict(X)[0])
+    raw_xgb = xgb_model.predict(X)[0]
+    pred_xgb = clip_prediction(raw_xgb)
+    
+    raw_lgb = lgb_model.predict(X)[0]
+    pred_lgb = clip_prediction(raw_lgb)
+    
+    raw_cb = cb_model.predict(X)[0]
+    pred_cb  = clip_prediction(raw_cb)
     
     X_scaled = scaler_X.transform(X)
     X_lstm = X_scaled.reshape((1, 1, X_scaled.shape[1]))
@@ -111,6 +116,11 @@ def predict_smart(data: RawPredictionInput):
     pred_lstm = clip_prediction(
         scaler_y.inverse_transform([[lstm_scaled]])[0][0]
     )
+    
+    # Debug logging
+    print(f"DEBUG - Timestamp: {ts}")
+    print(f"DEBUG - Features: {features}")
+    print(f"DEBUG - Raw Predictions: XGB={raw_xgb}, LGB={raw_lgb}, CB={raw_cb}, LSTM={pred_lstm}")
     
     # Update feature engineer with predicted power (ensemble mean as proxy if actual not available)
     ensemble_avg = (pred_xgb + pred_lgb + pred_cb + pred_lstm) / 4
