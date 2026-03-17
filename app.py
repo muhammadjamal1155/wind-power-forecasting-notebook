@@ -38,6 +38,31 @@ scaler_y = joblib.load("models/scaler_y.pkl")
 # Initialize Feature Engineer
 fe = FeatureEngineer()
 
+@app.get("/debug_env")
+def debug_env():
+    import sys
+    import xgboost
+    import sklearn
+    import pandas
+    import numpy
+    
+    # Try a raw prediction test
+    test_X = np.zeros((1, 13))
+    try:
+        raw_test = xgb_model.predict(test_X)[0]
+    except Exception as e:
+        raw_test = str(e)
+
+    return {
+        "python": sys.version,
+        "xgboost": xgboost.__version__,
+        "sklearn": sklearn.__version__,
+        "pandas": pandas.__version__,
+        "numpy": numpy.__version__,
+        "xgb_model_type": str(type(xgb_model)),
+        "raw_test_prediction": float(raw_test) if isinstance(raw_test, (float, np.float32, np.float64)) else raw_test
+    }
+
 
 def clip_prediction(pred):
     return max(0.0, float(pred))
