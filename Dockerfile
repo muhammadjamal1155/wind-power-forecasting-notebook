@@ -1,28 +1,33 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# Set the working directory in the container
-WORKDIR /app
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Install system dependencies (needed for some ML libraries)
+# Install system dependencies (needed for some ML libraries like CatBoost/XGBoost)
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
-    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container at /app
-COPY requirements.txt .
+# Create a non-root user for security (required by Hugging Face)
+RUN useradd -m -u 1000 user
+USER user
+ENV PATH="/home/user/.local/bin:$PATH"
 
-# Install any needed packages specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Set the working directory
+WORKDIR /app
 
-# Copy the rest of the application code into the container at /app
-COPY . .
+# Copy and install requirements first for better caching
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-# Expose the port the app runs on
+# Copy the rest of the application
+COPY --chown=user . .
+
+# Expose port (HF uses 7860)
 EXPOSE 7860
 
-# Command to run the application
-# Note: Hugging Face Spaces expects the app to run on port 7860 by default
+# Run the app
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
