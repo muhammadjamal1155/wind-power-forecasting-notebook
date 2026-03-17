@@ -1,3 +1,12 @@
+---
+title: Wind Power Forecasting
+emoji: 🌬️
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # Wind Power Forecasting FastAPI App
 
 This project is a machine learning-based application for forecasting wind power generation. It serves a predictive model through a FastAPI backend and provides a simple web interface for interaction.
