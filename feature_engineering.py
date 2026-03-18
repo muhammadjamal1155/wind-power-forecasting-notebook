@@ -12,6 +12,9 @@ class FeatureEngineer:
         We'll keep 10 to be safe.
         """
         self.history = deque(maxlen=10)
+
+    def is_cold_start(self):
+        return len(self.history) == 0
         
     def add_reading(self, wind_speed, theoretical_power, wind_direction, timestamp, actual_power=None):
         """
