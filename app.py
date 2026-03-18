@@ -25,9 +25,6 @@ def read_root():
 import xgboost as xgb
 xgb_model = xgb.Booster()
 xgb_model.load_model("models/xgboost_model.json")
-# Clear names to avoid validation errors across different environment versions
-xgb_model.feature_names = None
-xgb_model.feature_types = None
 lgb_model = joblib.load("models/lightgbm_model.pkl")
 
 cb_model = CatBoostRegressor()
