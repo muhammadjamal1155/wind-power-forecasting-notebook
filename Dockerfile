@@ -21,6 +21,7 @@ WORKDIR /app
 
 # Copy and install requirements first for better caching
 COPY --chown=user requirements.txt .
+# Force fresh pip install with pinned versions (2026-03-18 update)
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy the rest of the application
