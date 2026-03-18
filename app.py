@@ -23,8 +23,11 @@ def read_root():
 
 # Load models
 import xgboost as xgb
-xgb_model = xgb.XGBRegressor()
+xgb_model = xgb.Booster()
 xgb_model.load_model("models/xgboost_model.json")
+# Clear names to avoid validation errors across different environment versions
+xgb_model.feature_names = None
+xgb_model.feature_types = None
 lgb_model = joblib.load("models/lightgbm_model.pkl")
 
 cb_model = CatBoostRegressor()
@@ -128,7 +131,8 @@ def predict_smart(data: RawPredictionInput):
     # Perform prediction using existing logic
     X = np.array(features).reshape(1, -1)
     
-    raw_xgb = xgb_model.predict(X)[0]
+    dtest = xgb.DMatrix(X)
+    raw_xgb = xgb_model.predict(dtest)[0]
     pred_xgb = clip_prediction(raw_xgb)
     
     raw_lgb = lgb_model.predict(X)[0]
