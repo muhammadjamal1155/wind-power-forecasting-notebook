@@ -1,5 +1,5 @@
 import os
-# Disable GPU and oneDNN optimizations to prevent hangs on Windows
+# Disable GPU and oneDNN optimizations to prevent hangs on Windows (rebuild v2)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
