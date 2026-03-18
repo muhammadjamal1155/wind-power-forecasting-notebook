@@ -74,3 +74,10 @@ The model accepts the following features for prediction:
 - Time features (Hour, Day of Week)
 - Lag features (Power, Wind Speed)
 - Rolling Mean features
+
+## Prediction Determinism
+
+By default, `/predict_smart` now runs in **stateless** mode so the same input returns the same output.
+
+- Default: `STATEFUL_FEATURE_HISTORY=0` (deterministic requests)
+- Optional: set `STATEFUL_FEATURE_HISTORY=1` to enable cross-request lag history behavior

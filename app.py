@@ -38,8 +38,10 @@ lstm_model = load_model("models/lstm_model.keras")
 scaler_X = joblib.load("models/scaler_X.pkl")
 scaler_y = joblib.load("models/scaler_y.pkl")
 
-# Initialize Feature Engineer
-fe = FeatureEngineer()
+STATEFUL_FEATURE_HISTORY = os.getenv("STATEFUL_FEATURE_HISTORY", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+# Initialize shared Feature Engineer only when stateful mode is enabled
+fe = FeatureEngineer() if STATEFUL_FEATURE_HISTORY else None
 
 @app.get("/debug_env")
 def debug_env():
@@ -62,6 +64,7 @@ def debug_env():
         "sklearn": sklearn.__version__,
         "pandas": pandas.__version__,
         "numpy": numpy.__version__,
+        "stateful_feature_history": STATEFUL_FEATURE_HISTORY,
         "xgb_model_type": str(type(xgb_model)),
         "raw_test_prediction": float(raw_test) if isinstance(raw_test, (float, np.float32, np.float64)) else raw_test
     }
@@ -69,6 +72,12 @@ def debug_env():
 
 def clip_prediction(pred):
     return max(0.0, float(pred))
+
+
+def predict_xgb_from_array(X: np.ndarray) -> float:
+    dtest = xgb.DMatrix(X)
+    raw_xgb = xgb_model.predict(dtest)[0]
+    return clip_prediction(raw_xgb)
 
 
 from typing import List
@@ -94,7 +103,7 @@ def predict(data: PredictionInput):
     X = np.array(features).reshape(1, -1)
 
     # Tree-based models
-    pred_xgb = clip_prediction(xgb_model.predict(X)[0])
+    pred_xgb = predict_xgb_from_array(X)
     pred_lgb = clip_prediction(lgb_model.predict(X)[0])
     pred_cb  = clip_prediction(cb_model.predict(X)[0])
 
@@ -120,8 +129,10 @@ def predict_smart(data: RawPredictionInput):
     """
     ts = data.timestamp if data.timestamp else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
+    feature_engineer = fe if STATEFUL_FEATURE_HISTORY else FeatureEngineer()
+
     # Get 13 features from feature engineer
-    features = fe.get_features_for_prediction(
+    features = feature_engineer.get_features_for_prediction(
         data.wind_speed_ms,
         data.theoretical_power_kwh,
         data.wind_direction,
@@ -131,9 +142,7 @@ def predict_smart(data: RawPredictionInput):
     # Perform prediction using existing logic
     X = np.array(features).reshape(1, -1)
     
-    dtest = xgb.DMatrix(X)
-    raw_xgb = xgb_model.predict(dtest)[0]
-    pred_xgb = clip_prediction(raw_xgb)
+    pred_xgb = predict_xgb_from_array(X)
     
     raw_lgb = lgb_model.predict(X)[0]
     pred_lgb = clip_prediction(raw_lgb)
@@ -151,11 +160,12 @@ def predict_smart(data: RawPredictionInput):
     # Debug logging
     print(f"DEBUG - Timestamp: {ts}")
     print(f"DEBUG - Features: {features}")
-    print(f"DEBUG - Raw Predictions: XGB={raw_xgb}, LGB={raw_lgb}, CB={raw_cb}, LSTM={pred_lstm}")
+    print(f"DEBUG - Predictions: XGB={pred_xgb}, LGB={raw_lgb}, CB={raw_cb}, LSTM={pred_lstm}")
     
-    # Update feature engineer with predicted power (ensemble mean as proxy if actual not available)
+    # Update feature engineer only in stateful mode
     ensemble_avg = (pred_xgb + pred_lgb + pred_cb + pred_lstm) / 4
-    fe.add_reading(data.wind_speed_ms, data.theoretical_power_kwh, data.wind_direction, ts, actual_power=ensemble_avg)
+    if STATEFUL_FEATURE_HISTORY:
+        feature_engineer.add_reading(data.wind_speed_ms, data.theoretical_power_kwh, data.wind_direction, ts, actual_power=ensemble_avg)
     
     return {
         "features_generated": features,
