@@ -8,7 +8,9 @@ from fastapi import FastAPI, Body
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import numpy as np
+import pandas as pd
 import joblib
+import xgboost as xgb
 from catboost import CatBoostRegressor
 from tensorflow.keras.models import load_model
 from feature_engineering import FeatureEngineer
@@ -21,11 +23,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def read_root():
     return FileResponse("templates/index.html")
 
+# Precise feature names required for XGBoost 2.1.4 to apply base_score correctly from DataFrame
+XGB_FEATURE_NAMES = [
+    'wind_speed_ms', 'Theoretical_Power_Curve (KWh)', 'Wind Direction (°)', 
+    'hour_of_day', 'day_of_week', 'power_lag_1', 'wind_speed_ms_lag_1', 
+    'power_lag_2', 'wind_speed_ms_lag_2', 'power_lag_6', 'wind_speed_ms_lag_6', 
+    'power_roll_mean_6', 'wind_speed_ms_roll_mean_6'
+]
+
 # Load models
-import xgboost as xgb
-xgb_model = xgb.Booster()
+xgb_model = xgb.XGBRegressor()
 xgb_model.load_model("models/xgboost_model.json")
 lgb_model = joblib.load("models/lightgbm_model.pkl")
+
 
 cb_model = CatBoostRegressor()
 cb_model.load_model("models/catboost_model.cbm")
@@ -71,12 +81,6 @@ def clip_prediction(pred):
     return max(0.0, float(pred))
 
 
-def predict_xgb_from_array(X: np.ndarray) -> float:
-    dtest = xgb.DMatrix(X)
-    raw_xgb = xgb_model.predict(dtest)[0]
-    return clip_prediction(raw_xgb)
-
-
 from typing import List
 
 from pydantic import BaseModel
@@ -100,7 +104,9 @@ def predict(data: PredictionInput):
     X = np.array(features).reshape(1, -1)
 
     # Tree-based models
-    pred_xgb = predict_xgb_from_array(X)
+    # Use DataFrame with names for XGBoost 2.1.4 to ensure base_score is applied
+    X_df = pd.DataFrame(X, columns=XGB_FEATURE_NAMES)
+    pred_xgb = clip_prediction(xgb_model.predict(X_df)[0])
     pred_lgb = clip_prediction(lgb_model.predict(X)[0])
     pred_cb  = clip_prediction(cb_model.predict(X)[0])
 
@@ -139,7 +145,9 @@ def predict_smart(data: RawPredictionInput):
     # Perform prediction using existing logic
     X = np.array(features).reshape(1, -1)
     
-    pred_xgb = predict_xgb_from_array(X)
+    # Use DataFrame with names for XGBoost 2.1.4 to ensure base_score is applied
+    X_df = pd.DataFrame(X, columns=XGB_FEATURE_NAMES)
+    pred_xgb = clip_prediction(xgb_model.predict(X_df)[0])
     
     raw_lgb = lgb_model.predict(X)[0]
     pred_lgb = clip_prediction(raw_lgb)
