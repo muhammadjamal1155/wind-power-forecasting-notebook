@@ -1,4 +1,5 @@
 import os
+import json
 
 # Disable GPU and oneDNN optimizations to prevent hangs on Windows (rebuild v2)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
@@ -31,6 +32,19 @@ def read_root():
 
 
 # Load models
+with open("models/xgboost_model.json", "r", encoding="utf-8") as f:
+    _xgb_model_metadata = json.load(f)
+
+XGB_MODEL_VERSION = ".".join(str(part) for part in _xgb_model_metadata.get("version", []))
+XGB_RUNTIME_VERSION = xgb.__version__
+
+if XGB_MODEL_VERSION and ".".join(XGB_RUNTIME_VERSION.split(".")[:2]) != ".".join(XGB_MODEL_VERSION.split(".")[:2]):
+    raise RuntimeError(
+        f"XGBoost runtime version {XGB_RUNTIME_VERSION} is incompatible with the "
+        f"serialized model version {XGB_MODEL_VERSION}. Install a matching XGBoost "
+        f"version before serving predictions."
+    )
+
 xgb_model = xgb.XGBRegressor()
 xgb_model.load_model("models/xgboost_model.json")
 XGB_FEATURE_NAMES = xgb_model.get_booster().feature_names or [
@@ -87,6 +101,7 @@ def debug_env():
     return {
         "python": sys.version,
         "xgboost": xgboost.__version__,
+        "xgboost_model_version": XGB_MODEL_VERSION,
         "sklearn": sklearn.__version__,
         "pandas": pandas.__version__,
         "numpy": numpy.__version__,
@@ -111,14 +126,22 @@ def predict_xgb(features):
 
 
 def cold_start_xgb_fallback(raw_xgb, pred_lgb, pred_cb, pred_lstm, is_cold_start):
-    if raw_xgb > 0 or not is_cold_start:
-        return clip_prediction(raw_xgb), False
+    peer_preds = np.array([pred_lgb, pred_cb, pred_lstm], dtype=float)
+    peer_mean = float(np.mean(peer_preds))
+    peer_median = float(np.median(peer_preds))
+
+    if not is_cold_start:
+        return clip_prediction(raw_xgb), False, "history_available"
 
     # XGBoost is heavily lag-dependent. In stateless cold-start mode the
-    # synthetic lag features can drive the raw score negative, which was being
-    # clipped to 0.0 on Hugging Face. Fall back to the other model signals.
-    fallback_pred = float(np.mean([pred_lgb, pred_cb, pred_lstm]))
-    return clip_prediction(fallback_pred), True
+    # synthetic lag features can produce values that are directionally wrong
+    # even when they are still positive, so guard against strong low outliers.
+    severe_low_outlier = raw_xgb < (peer_median * 0.65)
+    if raw_xgb > 0 and not severe_low_outlier:
+        return clip_prediction(raw_xgb), False, "xgb_ok"
+
+    fallback_reason = "negative_or_zero_xgb" if raw_xgb <= 0 else "cold_start_low_outlier"
+    return clip_prediction(peer_mean), True, fallback_reason
 
 
 class PredictionInput(BaseModel):
@@ -188,7 +211,7 @@ def predict_smart(data: RawPredictionInput):
     pred_lstm = clip_prediction(scaler_y.inverse_transform([[lstm_scaled]])[0][0])
 
     raw_xgb, pred_xgb = predict_xgb(features)
-    pred_xgb, xgb_used_fallback = cold_start_xgb_fallback(
+    pred_xgb, xgb_used_fallback, xgb_fallback_reason = cold_start_xgb_fallback(
         raw_xgb,
         pred_lgb,
         pred_cb,
@@ -201,6 +224,7 @@ def predict_smart(data: RawPredictionInput):
     print(
         f"DEBUG - Predictions: "
         f"XGB_raw={raw_xgb}, XGB_final={pred_xgb}, XGB_fallback={xgb_used_fallback}, "
+        f"XGB_fallback_reason={xgb_fallback_reason}, "
         f"LGB={raw_lgb}, CB={raw_cb}, LSTM={pred_lstm}"
     )
 
@@ -221,6 +245,7 @@ def predict_smart(data: RawPredictionInput):
             "cold_start": is_cold_start,
             "xgboost_raw": raw_xgb,
             "xgboost_used_fallback": xgb_used_fallback,
+            "xgboost_fallback_reason": xgb_fallback_reason,
         },
         "predictions": {
             "XGBoost": pred_xgb,
