@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #06b6d4;
@@ -680,6 +681,115 @@
                 grid-template-columns: 1fr 1fr;
             }
         }
+        /* ── New UI Components ── */
+        .ensemble-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(129, 140, 248, 0.12));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 1.25rem;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px -10px rgba(6, 182, 212, 0.2);
+        }
+
+        .ensemble-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .ensemble-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .ensemble-value {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+
+        .ensemble-unit {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .chart-container {
+            margin-top: 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            height: 320px;
+        }
+
+        /* Interactive Elements */
+        .wind-compass-wrap {
+            position: absolute;
+            right: 0.85rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .turbine-wrap {
+            position: absolute;
+            right: 2.8rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+        }
+
+        .turbine-icon {
+            animation: spinTurbine linear infinite;
+            animation-play-state: paused;
+        }
+
+        @keyframes spinTurbine {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .geolocation-btn {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: var(--primary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+            align-self: flex-end;
+        }
+
+        .geolocation-btn:hover {
+            background: rgba(6, 182, 212, 0.2);
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 
@@ -724,6 +834,13 @@
                     </div>
                     <span class="section-title">Environmental Conditions</span>
                     <div class="section-line"></div>
+                    <button type="button" class="geolocation-btn" id="geoBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        Auto-Fill Weather
+                    </button>
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
@@ -743,6 +860,14 @@
                         <label for="theoretical_power">Theoretical Power</label>
                         <div class="input-wrap">
                             <input type="number" step="any" id="theoretical_power" placeholder="e.g. 1200">
+                            <div class="turbine-wrap">
+                                <svg class="turbine-icon" id="turbineIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); opacity: 0.6;">
+                                    <path d="M12 12L12 2"></path>
+                                    <path d="M12 12L21 16"></path>
+                                    <path d="M12 12L3 16"></path>
+                                    <circle cx="12" cy="12" r="2"></circle>
+                                </svg>
+                            </div>
                             <span class="input-unit">KWh</span>
                         </div>
                     </div>
@@ -750,7 +875,14 @@
                         <label for="wind_direction">Wind Direction</label>
                         <div class="input-wrap">
                             <input type="number" step="any" id="wind_direction" placeholder="e.g. 270">
-                            <span class="input-unit">°</span>
+                            <div class="wind-compass-wrap" id="compassWrap">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                    <path d="M12 2L12 6"></path>
+                                </svg>
+                            </div>
+                            <span class="input-unit" style="right: 2.8rem;">°</span>
                         </div>
                     </div>
                 </div>
@@ -973,30 +1105,140 @@
             }
         });
 
-        function renderResults(data) {
+        let chartInstance = null;
+
+        function renderResults(predictions) {
             const resultDiv = document.getElementById('result');
+            
+            // Calculate Ensemble (Average)
+            const values = Object.values(predictions);
+            const ensembleValue = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+            
             let cardsHtml = '';
-            if (data && typeof data === 'object') {
-                let delay = 0.05;
-                for (const [model, value] of Object.entries(data)) {
-                    cardsHtml += `
-                    <div class="model-card" style="animation-delay:${delay}s">
-                        <div class="model-name">${model}</div>
-                        <div class="model-value">${Number(value).toFixed(1)}</div>
-                        <div class="model-unit">KW</div>
-                    </div>`;
-                    delay += 0.07;
-                }
+            let labels = [];
+            let chartData = [];
+            
+            let delay = 0.05;
+            for (const [model, value] of Object.entries(predictions)) {
+                labels.push(model);
+                chartData.push(Number(value).toFixed(1));
+                
+                cardsHtml += `
+                <div class="model-card" style="animation-delay:${delay}s">
+                    <div class="model-name">${model}</div>
+                    <div class="model-value">${Number(value).toFixed(1)}</div>
+                    <div class="model-unit">KW</div>
+                </div>`;
+                delay += 0.07;
             }
 
             resultDiv.innerHTML = `
-            <div class="result-header">
-                <div class="result-header-dot"></div>
-                <span class="result-header-text">Prediction Results</span>
-            </div>
-            <div class="result-grid">${cardsHtml}</div>`;
+                <div class="result-header">
+                    <div class="result-header-dot"></div>
+                    <span class="result-header-text">Prediction Intelligence</span>
+                </div>
+
+                <div class="ensemble-card">
+                    <div class="ensemble-label">Ensemble Forecast</div>
+                    <div class="ensemble-value">${ensembleValue}</div>
+                    <div class="ensemble-unit">KILOWATTS</div>
+                </div>
+
+                <div class="result-grid">
+                    ${cardsHtml}
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+            `;
+            
             resultDiv.style.display = 'block';
+
+            // Render Chart
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+            
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Predicted Power (KW)',
+                        data: chartData,
+                        backgroundColor: 'rgba(6, 182, 212, 0.4)',
+                        borderColor: 'rgba(6, 182, 212, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: 'rgba(6, 182, 212, 0.7)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+
+            // Smooth scroll to results
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+
+        // Compass Rotation
+        document.getElementById('wind_direction').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) || 0;
+            document.getElementById('compassWrap').style.transform = `translateY(-50%) rotate(${val}deg)`;
+        });
+
+        // Turbine Animation Speed
+        document.getElementById('theoretical_power').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) || 0;
+            const turbine = document.getElementById('turbineIcon');
+            if (val > 0) {
+                const duration = Math.max(0.2, 5 - (val / 500));
+                turbine.style.animationDuration = `${duration}s`;
+                turbine.style.animationPlayState = 'running';
+            } else {
+                turbine.style.animationPlayState = 'paused';
+            }
+        });
+
+        // Geolocation Mock/Integration
+        document.getElementById('geoBtn').addEventListener('click', () => {
+            const btn = document.getElementById('geoBtn');
+            btn.innerHTML = 'Fetching...';
+            btn.style.opacity = '0.7';
+            
+            // Mocking a live weather fetch
+            setTimeout(() => {
+                document.getElementById('wind_speed_ms').value = (Math.random() * 15 + 2).toFixed(2);
+                document.getElementById('wind_direction').value = Math.floor(Math.random() * 360);
+                document.getElementById('theoretical_power').value = (Math.random() * 2000 + 500).toFixed(0);
+                
+                // Trigger visual updates
+                document.getElementById('wind_direction').dispatchEvent(new Event('input'));
+                document.getElementById('theoretical_power').dispatchEvent(new Event('input'));
+                
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"></path></svg> Updated!`;
+                setTimeout(() => {
+                    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Auto-Fill Weather`;
+                    btn.style.opacity = '1';
+                }, 2000);
+            }, 800);
+        });
     </script>
 </body>
 
