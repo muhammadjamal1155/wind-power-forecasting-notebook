@@ -1,13 +1,9 @@
 import os
 import json
-
-# Disable GPU and oneDNN optimizations to prevent hangs on Windows (rebuild v2)
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-
+import requests
 from datetime import datetime
 from typing import List
+from dotenv import load_dotenv
 
 import joblib
 import numpy as np
@@ -22,13 +18,49 @@ from tensorflow.keras.models import load_model
 
 from feature_engineering import FeatureEngineer
 
+load_dotenv() # Load OpenWeatherMap API Key from .env
+
+# Disable GPU and oneDNN optimizations to prevent hangs on Windows (rebuild v2)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 app = FastAPI(title="Wind Power Forecasting API")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+class WeatherInput(BaseModel):
+    lat: float
+    lon: float
 
 
 @app.get("/")
 def read_root():
     return FileResponse("templates/index.html")
+
+
+# Disabled: Weather API Proxy (Requires valid OPENWEATHER_API_KEY in .env)
+# @app.post("/fetch_weather")
+# def fetch_weather(data: WeatherInput):
+#     api_key = os.getenv("OPENWEATHER_API_KEY")
+#     if not api_key:
+#         return {"error": "Weather API key not configured on server."}
+#
+#     url = f"https://api.openweathermap.org/data/2.5/weather?lat={data.lat}&lon={data.lon}&appid={api_key}&units=metric"
+#     try:
+#         response = requests.get(url, timeout=10)
+#         response.raise_for_status()
+#         weather_data = response.json()
+#         
+#         return {
+#             "wind_speed": weather_data.get("wind", {}).get("speed", 0),
+#             "wind_deg": weather_data.get("wind", {}).get("deg", 0),
+#             "temp": weather_data.get("main", {}).get("temp", 0),
+#             "location": weather_data.get("name", "Unknown Location")
+#         }
+#     except Exception as e:
+#         return {"error": f"Failed to fetch weather: {str(e)}"}
+
 
 
 # Load models
