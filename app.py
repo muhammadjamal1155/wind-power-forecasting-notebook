@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from typing import List
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
 
 import joblib
 import numpy as np
@@ -16,16 +17,52 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from tensorflow.keras.models import load_model
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from supabase import create_client, Client
+
 from feature_engineering import FeatureEngineer
 
-load_dotenv() # Load OpenWeatherMap API Key from .env
+load_dotenv() # Load env vars from .env
+
+# Supabase Setup
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("Connected to Supabase")
+    except Exception as e:
+        print(f"Supabase connection error: {e}")
+
+# Automation Config
+AUTO_LAT = float(os.getenv("AUTO_LAT", "52.52"))
+AUTO_LON = float(os.getenv("AUTO_LON", "13.41"))
+AUTO_THEORETICAL_CAPACITY = float(os.getenv("AUTO_THEORETICAL_CAPACITY", "500"))
 
 # Disable GPU and oneDNN optimizations to prevent hangs on Windows (rebuild v2)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
-app = FastAPI(title="Wind Power Forecasting API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start Scheduler
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(automated_prediction_job, 'interval', minutes=10)
+    scheduler.start()
+    print("Scheduler started: Running automated predictions every 10 minutes.")
+    
+    # Run once at startup immediately
+    # await automated_prediction_job()
+    
+    yield
+    # Shutdown
+    scheduler.shutdown()
+    print("Scheduler shutdown")
+
+app = FastAPI(title="Wind Power Forecasting API", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -39,27 +76,25 @@ def read_root():
     return FileResponse("templates/index.html")
 
 
-# Disabled: Weather API Proxy (Requires valid OPENWEATHER_API_KEY in .env)
-# @app.post("/fetch_weather")
-# def fetch_weather(data: WeatherInput):
-#     api_key = os.getenv("OPENWEATHER_API_KEY")
-#     if not api_key:
-#         return {"error": "Weather API key not configured on server."}
-#
-#     url = f"https://api.openweathermap.org/data/2.5/weather?lat={data.lat}&lon={data.lon}&appid={api_key}&units=metric"
-#     try:
-#         response = requests.get(url, timeout=10)
-#         response.raise_for_status()
-#         weather_data = response.json()
-#         
-#         return {
-#             "wind_speed": weather_data.get("wind", {}).get("speed", 0),
-#             "wind_deg": weather_data.get("wind", {}).get("deg", 0),
-#             "temp": weather_data.get("main", {}).get("temp", 0),
-#             "location": weather_data.get("name", "Unknown Location")
-#         }
-#     except Exception as e:
-#         return {"error": f"Failed to fetch weather: {str(e)}"}
+# Open-Meteo API Proxy (No Key Required)
+@app.post("/fetch_weather")
+def fetch_weather(data: WeatherInput):
+    # Open-Meteo requires no API key for non-commercial use
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={data.lat}&longitude={data.lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        weather_data = response.json()
+        current = weather_data.get("current", {})
+        
+        return {
+            "wind_speed": current.get("wind_speed_10m", 0),
+            "wind_deg": current.get("wind_direction_10m", 0),
+            "temp": current.get("temperature_2m", 0), # Optional
+            "location": "Local Weather (Open-Meteo)"
+        }
+    except Exception as e:
+        return {"error": f"Failed to fetch weather: {str(e)}"}
 
 
 
@@ -270,6 +305,24 @@ def predict_smart(data: RawPredictionInput):
             actual_power=ensemble_avg,
         )
 
+    # Save to history (Supabase)
+    if supabase:
+        try:
+            db_data = {
+                "wind_speed": float(data.wind_speed_ms),
+                "wind_direction": float(data.wind_direction),
+                "theoretical_power": float(data.theoretical_power_kwh),
+                "prediction_ensemble": float(ensemble_avg),
+                "prediction_xgb": float(pred_xgb),
+                "prediction_lgb": float(pred_lgb),
+                "prediction_cb": float(pred_cb),
+                "prediction_lstm": float(pred_lstm),
+            }
+            supabase.table("prediction_history").insert(db_data).execute()
+            print("DEBUG - Saved manual prediction to Supabase")
+        except Exception as e:
+            print(f"ERROR - Failed to save manual prediction: {e}")
+
     return {
         "features_generated": features,
         "debug": {
@@ -287,3 +340,72 @@ def predict_smart(data: RawPredictionInput):
             "Ensemble": ensemble_avg,
         },
     }
+
+
+@app.get("/history")
+def get_history(limit: int = 10, start: str = None, end: str = None):
+    if not supabase:
+        return {"error": "Supabase not configured"}
+    
+    try:
+        query = supabase.table("prediction_history") \
+            .select("*") \
+            .order("created_at", desc=True)
+        
+        if start:
+            query = query.gte("created_at", start)
+        if end:
+            query = query.lte("created_at", end)
+        
+        query = query.limit(limit)
+        response = query.execute()
+        return response.data
+    except Exception as e:
+        return {"error": f"Failed to fetch history: {str(e)}"}
+
+
+async def automated_prediction_job():
+    print(f"DEBUG - [{datetime.now()}] Starting automated prediction...")
+    # 1. Fetch Weather (Open-Meteo)
+    url = f"https://api.open-meteo.com/v1/forecast?latitude={AUTO_LAT}&longitude={AUTO_LON}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms"
+    try:
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        w_data = resp.json().get("current", {})
+        wind_speed = w_data.get("wind_speed_10m", 0)
+        wind_deg = w_data.get("wind_direction_10m", 0)
+    except Exception as e:
+        print(f"ERROR - Weather fetch failed: {e}")
+        return
+
+    # 2. Make Prediction using predict_smart logic
+    # Create input object
+    input_data = RawPredictionInput(
+        wind_speed_ms=float(wind_speed),
+        theoretical_power_kwh=AUTO_THEORETICAL_CAPACITY,
+        wind_direction=float(wind_deg)
+    )
+    
+    try:
+        # Call the existing logic
+        result = predict_smart(input_data)
+        preds = result["predictions"]
+        
+        # 3. Store in Supabase
+        if supabase:
+            db_data = {
+                "wind_speed": float(wind_speed),
+                "wind_direction": float(wind_deg),
+                "theoretical_power": AUTO_THEORETICAL_CAPACITY,
+                "prediction_ensemble": float(preds["Ensemble"]),
+                "prediction_xgb": float(preds["XGBoost"]),
+                "prediction_lgb": float(preds["LightGBM"]),
+                "prediction_cb": float(preds["CatBoost"]),
+                "prediction_lstm": float(preds["LSTM"]),
+            }
+            supabase.table("prediction_history").insert(db_data).execute()
+            print(f"DEBUG - Saved automated prediction: {preds['Ensemble']} KW")
+        else:
+            print("DEBUG - Skip Supabase: Client not initialized.")
+    except Exception as e:
+        print(f"ERROR - Automated prediction failed: {e}")

@@ -10,3 +10,5 @@ tensorflow>=2.16.0
 catboost
 requests
 python-dotenv
+supabase
+apscheduler

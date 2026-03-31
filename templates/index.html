@@ -7,9 +7,28 @@
     <title>Wind Power Forecaster</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .history-card {
+            margin-top: 3rem !important;
+            animation: slideUp 0.6s ease both !important;
+        }
+        .hist-content {
+            display: block !important;
+            width: 100% !important;
+        }
+        .history-chart-container {
+            height: 400px !important;
+            background: rgba(0, 0, 0, 0.2) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 1rem !important;
+            padding: 1.5rem !important;
+            position: relative !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -28,12 +47,14 @@
         <header class="header">
             <div class="badge">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 3C9 3 6 5.5 6 9c0 2.6 1.5 4.8 3.8 6H8v2h8v-2h-1.8C16.5 13.8 18 11.6 18 9c0-3.5-3-6-6-6zm0 10.5C9.5 13.5 8 11.4 8 9c0-2.2 1.8-4 4-4s4 1.8 4 4c0 2.4-1.5 4.5-4 4.5z" />
+                    <path
+                        d="M12 3C9 3 6 5.5 6 9c0 2.6 1.5 4.8 3.8 6H8v2h8v-2h-1.8C16.5 13.8 18 11.6 18 9c0-3.5-3-6-6-6zm0 10.5C9.5 13.5 8 11.4 8 9c0-2.2 1.8-4 4-4s4 1.8 4 4c0 2.4-1.5 4.5-4 4.5z" />
                 </svg>
                 AI-Powered Forecasting
             </div>
             <h1>Wind Power Forecaster</h1>
-            <p class="subtitle">Enter environmental and temporal parameters to get ensemble predictions from our ML models.</p>
+            <p class="subtitle">Enter environmental and temporal parameters to get ensemble predictions from our ML
+                models.</p>
         </header>
 
         <!-- Main Card -->
@@ -43,21 +64,22 @@
                 <!-- Section 1: Environmental Conditions -->
                 <div class="section-header">
                     <div class="section-icon cyan">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 8c2 0 4-2 6-2s4 2 6 2 4-2 6-2M3 14c2 0 4-2 6-2s4 2 6 2 4-2 6-2" />
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3 8c2 0 4-2 6-2s4 2 6 2 4-2 6-2M3 14c2 0 4-2 6-2s4 2 6 2 4-2 6-2" />
                         </svg>
                     </div>
                     <span class="section-title">Environmental Conditions</span>
                     <div class="section-line"></div>
-                    <!-- Auto-Fill Weather disabled (Requires API Key)
                     <button type="button" class="geolocation-btn" id="geoBtn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
                         Auto-Fill Weather
                     </button>
-                    -->
                 </div>
                 <div class="form-grid">
                     <div class="form-group">
@@ -69,7 +91,7 @@
                     <div class="form-group">
                         <label for="wind_speed_ms">Wind Speed</label>
                         <div class="input-wrap">
-                            <input type="number" id="wind_speed_ms" step="0.1" placeholder="e.g. 5.2">
+                            <input type="number" id="wind_speed_ms" step="0.00001" placeholder="e.g. 5.23456">
                             <span class="input-unit">m/s</span>
                         </div>
                     </div>
@@ -81,7 +103,8 @@
                             <div class="wind-compass-wrap" id="compassWrap">
                                 <svg width="24" height="24" viewBox="0 0 24 24">
                                     <path d="M12 2l3 7h-6z" fill="var(--primary)" />
-                                    <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
+                                    <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(255,255,255,0.1)"
+                                        stroke-width="1" />
                                 </svg>
                             </div>
                         </div>
@@ -91,7 +114,8 @@
                 <!-- Section 2: Technical Parameters -->
                 <div class="section-header">
                     <div class="section-icon purple">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                            stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
@@ -105,7 +129,9 @@
                             <input type="number" id="theoretical_power" step="1" placeholder="Max Power">
                             <span class="input-unit">KW</span>
                             <div class="turbine-wrap">
-                                <svg id="turbineIcon" class="turbine-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <svg id="turbineIcon" class="turbine-icon" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
                                     <circle cx="12" cy="12" r="3" />
                                     <path d="M12 12L12 2" />
                                     <path d="M12 12L4 18" />
@@ -120,7 +146,8 @@
                 <div class="btn-wrap">
                     <button type="submit" id="submitBtn">
                         <span class="spinner"></span>
-                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2">
                             <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             <path d="M9 12l2 2 4-4" />
                         </svg>
@@ -134,12 +161,234 @@
             </div>
         </div>
 
+        <!-- History Card -->
+        <div class="card history-card" id="historyCard">
+            <div class="section-header">
+                <div class="section-icon green">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <span class="section-title">Prediction History</span>
+                <div class="section-line"></div>
+                <button type="button" class="refresh-btn" id="refreshHistory">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+
+            <!-- Filter Controls -->
+            <div id="historyFilters" style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end; margin-bottom:1.5rem;">
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                    <label style="font-size:0.72rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">From</label>
+                    <input type="datetime-local" id="histFilterFrom"
+                        style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.55rem 0.85rem; color:#f0f9ff; font-size:0.85rem; font-family:inherit;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                    <label style="font-size:0.72rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">To</label>
+                    <input type="datetime-local" id="histFilterTo"
+                        style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.55rem 0.85rem; color:#f0f9ff; font-size:0.85rem; font-family:inherit;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                    <label style="font-size:0.72rem; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em;">Show last</label>
+                    <select id="histFilterLimit"
+                        style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.55rem 0.85rem; color:#f0f9ff; font-size:0.85rem; font-family:inherit; cursor:pointer;">
+                        <option value="10" selected>10 records</option>
+                        <option value="25">25 records</option>
+                        <option value="50">50 records</option>
+                        <option value="100">100 records</option>
+                    </select>
+                </div>
+                <button type="button" id="histApplyFilter"
+                    style="background:linear-gradient(135deg,#0891b2,#06b6d4); border:none; border-radius:0.6rem; padding:0.55rem 1.25rem; color:#fff; font-size:0.82rem; font-weight:700; font-family:inherit; cursor:pointer; margin-top:auto; transition:all 0.2s;">
+                    Apply Filter
+                </button>
+                <button type="button" id="histClearFilter"
+                    style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:0.6rem; padding:0.55rem 1rem; color:#94a3b8; font-size:0.82rem; font-weight:600; font-family:inherit; cursor:pointer; margin-top:auto; transition:all 0.2s;">
+                    Clear
+                </button>
+            </div>
+
+            <div class="hist-content">
+                <div class="history-chart-container">
+                    <canvas id="historyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <footer class="footer">
             &copy; 2026 WindVision AI &bull; Ensemble Machine Learning Dashboard
         </footer>
     </div>
 
     <script src="/static/js/main.js"></script>
-</body>
+    
+    <!-- History Loader -->
+    <script>
+        (function () {
+            let histChart = null;
+            const refreshBtn  = document.getElementById('refreshHistory');
+            const applyBtn    = document.getElementById('histApplyFilter');
+            const clearBtn    = document.getElementById('histClearFilter');
+            const fromInput   = document.getElementById('histFilterFrom');
+            const toInput     = document.getElementById('histFilterTo');
+            const limitSelect = document.getElementById('histFilterLimit');
 
+            function buildUrl() {
+                const limit = limitSelect ? limitSelect.value : 10;
+                const from  = fromInput && fromInput.value ? new Date(fromInput.value).toISOString() : null;
+                const to    = toInput   && toInput.value   ? new Date(toInput.value).toISOString()   : null;
+                let url = '/history?limit=' + limit + '&t=' + Date.now();
+                if (from) url += '&start=' + encodeURIComponent(from);
+                if (to)   url += '&end='   + encodeURIComponent(to);
+                return url;
+            }
+
+            async function fetchAndRender() {
+                if (refreshBtn) refreshBtn.classList.add('spinning');
+                try {
+                    const res  = await fetch(buildUrl());
+                    const data = await res.json();
+                    if (data && !data.error) {
+                        renderChart(data);
+                    } else {
+                        console.error('History error:', data);
+                    }
+                } catch (e) {
+                    console.error('History fetch failed:', e);
+                } finally {
+                    if (refreshBtn) refreshBtn.classList.remove('spinning');
+                }
+            }
+
+            function renderChart(data) {
+                if (typeof Chart === 'undefined') return;
+
+                const ctx = document.getElementById('historyChart');
+                if (!ctx) return;
+
+                // Always destroy old chart first so stale data never persists
+                if (histChart) { histChart.destroy(); histChart = null; }
+
+                // Show empty state message if no results
+                const existingMsg = document.getElementById('histEmptyMsg');
+                if (existingMsg) existingMsg.remove();
+
+                if (!data || data.length === 0) {
+                    const msg = document.createElement('div');
+                    msg.id = 'histEmptyMsg';
+                    msg.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#475569; font-size:0.9rem; font-style:italic; pointer-events:none;';
+                    msg.textContent = 'No records found for the selected range.';
+                    ctx.parentElement.style.position = 'relative';
+                    ctx.parentElement.appendChild(msg);
+                    return;
+                }
+
+                const sorted = [...data].reverse();
+                const labels = sorted.map(d => {
+                    const dt = new Date(d.created_at);
+                    return dt.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                });
+                const values = sorted.map(d => d.prediction_ensemble);
+
+                histChart = new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Ensemble Forecast (KW)',
+                            data: values,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16,185,129,0.12)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 5,
+                            pointBackgroundColor: '#10b981',
+                            pointHoverRadius: 7,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(15,23,42,0.95)',
+                                titleColor: '#94a3b8',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(255,255,255,0.1)',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: ctx => ` ${ctx.parsed.y.toFixed(1)} KW`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: { color: 'rgba(255,255,255,0.05)' },
+                                ticks: { color: '#94a3b8', callback: v => v + ' KW' }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#94a3b8', maxRotation: 30, maxTicksLimit: 12 }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Wire buttons
+            if (refreshBtn) refreshBtn.onclick = fetchAndRender;
+            if (applyBtn)   applyBtn.onclick   = fetchAndRender;
+            if (clearBtn)   clearBtn.onclick   = () => {
+                if (fromInput)   fromInput.value = '';
+                if (toInput)     toInput.value   = '';
+                if (limitSelect) limitSelect.value = '10';
+                fetchAndRender();
+            };
+
+            // Auto-poll every 10 minutes to stay in sync with the scheduler
+            const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+            setInterval(fetchAndRender, POLL_INTERVAL_MS);
+
+            // Show a "last updated" timestamp below the chart
+            function updateLastUpdatedLabel() {
+                let label = document.getElementById('histLastUpdated');
+                if (!label) {
+                    label = document.createElement('p');
+                    label.id = 'histLastUpdated';
+                    label.style.cssText = 'font-size:0.72rem; color:#475569; text-align:right; margin-top:0.5rem; font-style:italic;';
+                    const container = document.querySelector('.history-chart-container');
+                    if (container) container.after(label);
+                }
+                label.textContent = 'Last updated: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+
+            // Wrap fetchAndRender to also update the label
+            const _originalFetch = fetchAndRender;
+            async function fetchAndRenderWithLabel() {
+                await _originalFetch();
+                updateLastUpdatedLabel();
+            }
+
+            // Replace interval with the labeled version
+            clearInterval(window._histPollId);
+            window._histPollId = setInterval(fetchAndRenderWithLabel, POLL_INTERVAL_MS);
+            if (refreshBtn) refreshBtn.onclick = fetchAndRenderWithLabel;
+            if (applyBtn)   applyBtn.onclick   = fetchAndRenderWithLabel;
+
+            // Initial load after DOM settles
+            setTimeout(() => { fetchAndRender(); updateLastUpdatedLabel(); }, 1200);
+
+            // Refresh after manual prediction
+            window.addEventListener('history_update', fetchAndRenderWithLabel);
+        })();
+    </script>
+</body>
 </html>

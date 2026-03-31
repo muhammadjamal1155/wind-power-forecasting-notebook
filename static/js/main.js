@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const data = await response.json();
                 renderResults(data.predictions);
+                window.dispatchEvent(new Event('history_update'));
             } catch (error) {
                 console.error("Smart Prediction error:", error);
                 resultDiv.innerHTML = `<div class="error-box">⚠ ${error.message}</div>`;
@@ -317,4 +318,130 @@ document.addEventListener('DOMContentLoaded', () => {
             }, { timeout: 10000 });
         });
     }
+
+    // ── History Logic ──
+    const refreshBtn = document.getElementById('refreshHistory');
+    let historyChart = null;
+
+    async function loadHistory() {
+        if (refreshBtn) refreshBtn.classList.add('spinning');
+        try {
+            const response = await fetch('/history?limit=30');
+            const data = await response.json();
+            console.log("Fetched history data:", data);
+            
+            if (data && !data.error) {
+                console.log(`Rendering ${data.length} records.`);
+                // Isolated rendering so one failure doesn't block both
+                try { renderHistoryChart(data); } catch (e) { console.error("Chart Error:", e); }
+                try { renderHistoryTable(data); } catch (e) { console.error("Table Error:", e); }
+            } else {
+                console.error("History error:", data ? data.error : "No data");
+                renderHistoryTable([]); // Show empty state
+            }
+        } catch (error) {
+            console.error("Failed to load history:", error);
+            renderHistoryTable([]); // Show empty state
+        } finally {
+            if (refreshBtn) refreshBtn.classList.remove('spinning');
+        }
+    }
+
+    function renderHistoryChart(data) {
+        if (typeof Chart === 'undefined') {
+            console.error("Chart.js not loaded!");
+            return;
+        }
+        if (!data || data.length === 0) return;
+        const ctx = document.getElementById('historyChart').getContext('2d');
+        const reversedData = [...data].reverse();
+        
+        const labels = reversedData.map(d => {
+            const date = new Date(d.created_at);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        });
+        
+        const values = reversedData.map(d => d.prediction_ensemble);
+
+        if (historyChart) historyChart.destroy();
+        
+        historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ensemble Forecast (KW)',
+                    data: values,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#10b981',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#94a3b8',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)' }, 
+                        ticks: { color: '#94a3b8' } 
+                    },
+                    x: { 
+                        grid: { display: false }, 
+                        ticks: { color: '#94a3b8', maxRotation: 0 } 
+                    }
+                }
+            }
+        });
+    }
+
+    function renderHistoryTable(data) {
+        const tbody = document.getElementById('historyTableBody');
+        if (!tbody) return;
+        
+        console.log("Rendering table with data:", data);
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2.5rem; color: #64748b; font-style: italic;">No historical records found yet. Click predict or wait for automated task.</td></tr>';
+            return;
+        }
+
+        const rows = data.map(d => {
+            const date = new Date(d.created_at);
+            const timeStr = isNaN(date.getTime()) ? "Invalid Date" : date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return `
+                <tr style="display: table-row !important;">
+                    <td style="display: table-cell !important; padding: 1rem !important;">${timeStr}</td>
+                    <td style="display: table-cell !important; padding: 1rem !important; color: #06b6d4; font-weight: 700;">${Number(d.prediction_ensemble || 0).toFixed(1)}</td>
+                    <td style="display: table-cell !important; padding: 1rem !important;">${Number(d.wind_speed || 0).toFixed(1)}</td>
+                    <td style="display: table-cell !important; padding: 1rem !important;">${Number(d.wind_direction || 0).toFixed(0)}°</td>
+                </tr>
+            `;
+        });
+        
+        tbody.innerHTML = rows.join('');
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadHistory);
+    }
+
+    // Initial load
+    loadHistory();
 });
