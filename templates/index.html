@@ -224,11 +224,13 @@
     </div>
 
     <script src="/static/js/main.js"></script>
-    
-    <!-- History Loader -->
+        <!-- History Loader -->
     <script>
         (function () {
-            let histChart = null;
+            // Single chart instance — stored on window to avoid race conditions
+            window._histChartInstance = null;
+            let _isFetching = false; // Lock to prevent concurrent renders
+
             const refreshBtn  = document.getElementById('refreshHistory');
             const applyBtn    = document.getElementById('histApplyFilter');
             const clearBtn    = document.getElementById('histClearFilter');
@@ -237,9 +239,9 @@
             const limitSelect = document.getElementById('histFilterLimit');
 
             function buildUrl() {
-                const limit = limitSelect ? limitSelect.value : 10;
-                const from  = fromInput && fromInput.value ? new Date(fromInput.value).toISOString() : null;
-                const to    = toInput   && toInput.value   ? new Date(toInput.value).toISOString()   : null;
+                const limit = (limitSelect && limitSelect.value) ? limitSelect.value : 10;
+                const from  = (fromInput && fromInput.value) ? new Date(fromInput.value).toISOString() : null;
+                const to    = (toInput && toInput.value) ? new Date(toInput.value).toISOString() : null;
                 let url = '/history?limit=' + limit + '&t=' + Date.now();
                 if (from) url += '&start=' + encodeURIComponent(from);
                 if (to)   url += '&end='   + encodeURIComponent(to);
@@ -247,42 +249,63 @@
             }
 
             async function fetchAndRender() {
+                if (_isFetching) return; // Skip if already running
+                _isFetching = true;
                 if (refreshBtn) refreshBtn.classList.add('spinning');
+
                 try {
                     const res  = await fetch(buildUrl());
                     const data = await res.json();
                     if (data && !data.error) {
                         renderChart(data);
+                        updateLastUpdated();
                     } else {
                         console.error('History error:', data);
                     }
                 } catch (e) {
                     console.error('History fetch failed:', e);
                 } finally {
+                    _isFetching = false;
                     if (refreshBtn) refreshBtn.classList.remove('spinning');
                 }
+            }
+
+            function updateLastUpdated() {
+                let label = document.getElementById('histLastUpdated');
+                if (!label) {
+                    label = document.createElement('p');
+                    label.id = 'histLastUpdated';
+                    label.style.cssText = 'font-size:0.72rem; color:#475569; text-align:right; margin-top:0.5rem; font-style:italic;';
+                    const container = document.querySelector('.history-chart-container');
+                    if (container) container.after(label);
+                }
+                label.textContent = 'Last updated: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
 
             function renderChart(data) {
                 if (typeof Chart === 'undefined') return;
 
-                const ctx = document.getElementById('historyChart');
-                if (!ctx) return;
+                const canvas = document.getElementById('historyChart');
+                if (!canvas) return;
 
-                // Always destroy old chart first so stale data never persists
-                if (histChart) { histChart.destroy(); histChart = null; }
+                // Destroy existing chart before creating a new one
+                if (window._histChartInstance) {
+                    window._histChartInstance.destroy();
+                    window._histChartInstance = null;
+                }
 
-                // Show empty state message if no results
-                const existingMsg = document.getElementById('histEmptyMsg');
-                if (existingMsg) existingMsg.remove();
+                // Remove empty state message
+                const msg = document.getElementById('histEmptyMsg');
+                if (msg) msg.remove();
 
+                // Show empty state if no data
                 if (!data || data.length === 0) {
-                    const msg = document.createElement('div');
-                    msg.id = 'histEmptyMsg';
-                    msg.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#475569; font-size:0.9rem; font-style:italic; pointer-events:none;';
-                    msg.textContent = 'No records found for the selected range.';
-                    ctx.parentElement.style.position = 'relative';
-                    ctx.parentElement.appendChild(msg);
+                    const empty = document.createElement('div');
+                    empty.id = 'histEmptyMsg';
+                    empty.style.cssText = 'position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#475569; font-size:0.9rem; font-style:italic; pointer-events:none;';
+                    empty.textContent = 'No records found for the selected range.';
+                    canvas.parentElement.style.position = 'relative';
+                    canvas.parentElement.appendChild(empty);
                     return;
                 }
 
@@ -293,7 +316,7 @@
                 });
                 const values = sorted.map(d => d.prediction_ensemble);
 
-                histChart = new Chart(ctx.getContext('2d'), {
+                window._histChartInstance = new Chart(canvas.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels,
@@ -323,9 +346,7 @@
                                 bodyColor: '#fff',
                                 borderColor: 'rgba(255,255,255,0.1)',
                                 borderWidth: 1,
-                                callbacks: {
-                                    label: ctx => ` ${ctx.parsed.y.toFixed(1)} KW`
-                                }
+                                callbacks: { label: ctx => ` ${ctx.parsed.y.toFixed(1)} KW` }
                             }
                         },
                         scales: {
@@ -347,47 +368,21 @@
             if (refreshBtn) refreshBtn.onclick = fetchAndRender;
             if (applyBtn)   applyBtn.onclick   = fetchAndRender;
             if (clearBtn)   clearBtn.onclick   = () => {
-                if (fromInput)   fromInput.value = '';
-                if (toInput)     toInput.value   = '';
+                if (fromInput)   fromInput.value  = '';
+                if (toInput)     toInput.value    = '';
                 if (limitSelect) limitSelect.value = '10';
                 fetchAndRender();
             };
 
-            // Auto-poll every 10 minutes to stay in sync with the scheduler
-            const POLL_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
-            setInterval(fetchAndRender, POLL_INTERVAL_MS);
-
-            // Show a "last updated" timestamp below the chart
-            function updateLastUpdatedLabel() {
-                let label = document.getElementById('histLastUpdated');
-                if (!label) {
-                    label = document.createElement('p');
-                    label.id = 'histLastUpdated';
-                    label.style.cssText = 'font-size:0.72rem; color:#475569; text-align:right; margin-top:0.5rem; font-style:italic;';
-                    const container = document.querySelector('.history-chart-container');
-                    if (container) container.after(label);
-                }
-                label.textContent = 'Last updated: ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            }
-
-            // Wrap fetchAndRender to also update the label
-            const _originalFetch = fetchAndRender;
-            async function fetchAndRenderWithLabel() {
-                await _originalFetch();
-                updateLastUpdatedLabel();
-            }
-
-            // Replace interval with the labeled version
+            // Single auto-poll — every 10 minutes
             clearInterval(window._histPollId);
-            window._histPollId = setInterval(fetchAndRenderWithLabel, POLL_INTERVAL_MS);
-            if (refreshBtn) refreshBtn.onclick = fetchAndRenderWithLabel;
-            if (applyBtn)   applyBtn.onclick   = fetchAndRenderWithLabel;
+            window._histPollId = setInterval(fetchAndRender, 10 * 60 * 1000);
 
-            // Initial load after DOM settles
-            setTimeout(() => { fetchAndRender(); updateLastUpdatedLabel(); }, 1200);
+            // Initial load
+            setTimeout(fetchAndRender, 1200);
 
             // Refresh after manual prediction
-            window.addEventListener('history_update', fetchAndRenderWithLabel);
+            window.addEventListener('history_update', fetchAndRender);
         })();
     </script>
 </body>
